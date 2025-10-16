@@ -1,0 +1,21 @@
+# This section specifies build-related settings for your site.
+[build]
+  # This tells Netlify where to find your serverless functions.
+  functions = "netlify/functions"
+
+# This section defines custom headers for your site's responses.
+# The double brackets indicate it's an array, allowing for multiple header rules.
+[[headers]]
+  # This rule applies to all pages on your site.
+  for = "/*"
+  
+  # The 'values' subsection contains the specific header key-value pairs.
+  [headers.values]
+    # Prevents browsers from caching the content.
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    # Prevents MIME-sniffing attacks.
+    X-Content-Type-Options = "nosniff"
+    # Prevents the site from being rendered in an iframe (clickjacking protection).
+    X-Frame-Options = "DENY"
+    # Controls how much referrer information is sent with requests.
+    Referrer-Policy = "strict-origin-when-cross-origin"
