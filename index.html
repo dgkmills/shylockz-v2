@@ -43,19 +43,9 @@
     <div class="max-w-7xl mx-auto">
         <header class="mb-6">
             <h1 class="text-3xl font-bold text-white">Shylockz Dashboard</h1>
-            <p class="text-gray-400">Live stock prices and simple charts.</p>
-            <!-- --- CHANGE --- -->
-            <!-- Updated data attribution to reflect Yahoo Finance as the source. -->
-            <div class="mt-2 text-xs text-gray-500 flex items-center gap-1.5">
-                <span>Data provided by Yahoo Finance</span>
-                <div class="group relative flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 a 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span class="absolute bottom-full mb-2 w-56 rounded-md bg-gray-700 p-2 text-center text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                        Data is sourced from an unofficial Yahoo Finance endpoint and is for reference only.
-                    </span>
-                </div>
+            <p class="text-gray-400">Live stock prices powered by a stable, official API.</p>
+            <div class="mt-2 text-xs text-gray-500">
+                Data provided by Finnhub. Market data may have slight delays.
             </div>
         </header>
 
@@ -68,8 +58,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             const symbols = ['AAPL', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'TSLA'];
             const grid = document.getElementById('stock-grid');
-            const chartObjects = {};
-
+            
+            // --- This version removes the chart objects for simplicity and stability ---
             const uiElements = {};
 
             function createSkeletonCard(symbol) {
@@ -78,28 +68,22 @@
                 card.className = 'stock-card rounded-lg p-4 flex flex-col';
 
                 card.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-3">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
                             <h2 class="font-bold text-xl text-white">${symbol}</h2>
-                            <div class="flex items-center gap-2">
-                                <a href="https://finance.yahoo.com/quote/${symbol}" target="_blank" rel="noopener noreferrer" title="View ${symbol} on Yahoo Finance" class="text-gray-500 hover:text-blue-400 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                    </svg>
-                                </a>
-                                <a href="https://robinhood.com/stocks/${symbol}" target="_blank" rel="noopener noreferrer" title="View ${symbol} on Robinhood" class="text-gray-500 hover:text-green-400 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M19.742 6.075c-2.38-.855-4.57-2.31-4.57-2.31s-1.14 2.085-3.085 2.565c-1.14.285-2.28.19-2.28.19s-4.37-1.425-5.32-1.805c-1.235-.475-1.9.57-1.9.57s.855 1.52.855 2.09c0 .57-.285 2.755-.285 2.755s-1.045 2.09 1.14 2.185c1.52.095 3.705-1.045 3.705-1.045s.38 1.805 2.47 2.47c1.33.475 2.755.285 2.755.285s2.38 1.425 4.57 1.805c2.185.38 3.135-1.045 3.135-1.045s-2.09-1.615-2.28-2.66c-.19-.95.76-2.09.76-2.09s3.235-1.805 2.565-3.8C22.612 7.03 21.077 6.55 19.742 6.075z"/>
-                                    </svg>
-                                </a>
-                            </div>
+                            <div class="text-xs text-gray-400">Last updated: <span class="last-updated">-</span></div>
                         </div>
-                        <div class="text-xs text-gray-400">Last updated: <span class="last-updated">-</span></div>
+                        <!-- --- CHANGE --- -->
+                        <!-- Made the Yahoo Finance link a more prominent button to embrace it as a feature. -->
+                        <a href="https://finance.yahoo.com/quote/${symbol}" target="_blank" rel="noopener noreferrer" 
+                           class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-2 rounded-md transition-colors">
+                           Compare on Yahoo
+                        </a>
                     </div>
                     <div class="price skeleton w-24 h-8"></div>
                     <div class="change skeleton w-20 h-5 mt-1"></div>
-                    <div class="mt-4 chart-container h-24">
-                        <div class="skeleton w-full h-full"></div>
+                    <div class="mt-4 text-xs text-gray-500">
+                        Historical charts are disabled in this stable version.
                     </div>
                 `;
                 grid.appendChild(card);
@@ -108,35 +92,17 @@
                     card,
                     price: card.querySelector('.price'),
                     change: card.querySelector('.change'),
-                    lastUpdated: card.querySelector('.last-updated'),
-                    chartContainer: card.querySelector('.chart-container')
+                    lastUpdated: card.querySelector('.last-updated')
                 };
-            }
-
-            function initializeChart(symbol) {
-                const options = {
-                    series: [{ data: [] }],
-                    chart: { type: 'area', height: '100%', sparkline: { enabled: true } },
-                    stroke: { curve: 'smooth', width: 2 },
-                    fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0, stops: [0, 90, 100] } },
-                    colors: ['#34D399'],
-                    tooltip: { enabled: false },
-                };
-                const chart = new ApexCharts(uiElements[symbol].chartContainer, options);
-                chart.render();
-                chartObjects[symbol] = chart;
             }
             
-            symbols.forEach(symbol => {
-                createSkeletonCard(symbol);
-                initializeChart(symbol);
-            });
+            symbols.forEach(createSkeletonCard);
 
             async function fetchData() {
                 try {
                     // --- CHANGE ---
-                    // Switched the API call to the new serverless function.
-                    const response = await fetch('/.netlify/functions/get-yahoo-stocks');
+                    // Reverted to the stable 'get-stocks' Netlify function.
+                    const response = await fetch('/.netlify/functions/get-stocks');
                     const stockData = await response.json();
 
                     if (stockData.error) {
@@ -152,9 +118,6 @@
                             ui.price.className = 'text-sm text-red-400';
                             ui.price.textContent = data.error;
                             ui.change.remove();
-                            if (ui.chartContainer.querySelector('.skeleton')) {
-                                ui.chartContainer.querySelector('.skeleton').remove();
-                            }
                             return;
                         }
 
@@ -164,22 +127,21 @@
                         
                         ui.price.classList.remove('skeleton', 'w-24', 'h-8');
                         ui.change.classList.remove('skeleton', 'w-20', 'h-5', 'mt-1');
-                        if (ui.chartContainer.querySelector('.skeleton')) {
-                             ui.chartContainer.querySelector('.skeleton').remove();
-                        }
-
+                       
                         const changeColor = data.changeAmount >= 0 ? 'text-green-400' : 'text-red-400';
-                        const chartColor = data.changeAmount >= 0 ? '#34D399' : '#F87171';
                         
                         ui.price.className = 'price text-2xl font-semibold text-white tabular-nums';
                         ui.change.className = `change text-sm font-medium ${changeColor} tabular-nums`;
-
-                        chartObjects[data.symbol].updateOptions({ colors: [chartColor] });
-                        chartObjects[data.symbol].updateSeries([{ data: data.historicalData }]);
                     });
 
                 } catch (error) {
                     console.error('Failed to fetch stock data:', error);
+                    // Display a global error if the whole fetch fails
+                    const header = document.querySelector('header p');
+                    if(header) {
+                        header.textContent = `Error: ${error.message}`;
+                        header.classList.add('text-red-400');
+                    }
                 }
             }
 
