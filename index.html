@@ -1,179 +1,214 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark"> <!-- Default to dark theme -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shylockz Dashboard</title>
+    <!-- === NEW: Favicon using his Degens logo === -->
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/dgkmills/shylockz-v2/main/icons/icon-192x192.png">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1a1a2e">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        /* === NEW: CSS Variables for Easy Theme Switching === */
+        :root {
+            --bg-color: #0f101a;
+            --card-color: #1a1a2e;
+            --text-color: #e0e0e0;
+            --text-muted-color: #9ca3af;
+            --border-color: #2a2a4a;
+            --skeleton-color: #2a2a4a;
+            --link-bg-color: #2563eb;
+            --link-bg-hover-color: #1d4ed8;
+        }
+
+        html.light {
+            --bg-color: #f3f4f6;
+            --card-color: #ffffff;
+            --text-color: #111827;
+            --text-muted-color: #4b5563;
+            --border-color: #d1d5db;
+            --skeleton-color: #e5e7eb;
+            --link-bg-color: #3b82f6;
+            --link-bg-hover-color: #2563eb;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0f101a;
-            color: #e0e0e0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
         }
         .stock-card {
-            background-color: #1a1a2e;
-            border: 1px solid #2a2a4a;
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            background-color: var(--card-color);
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background-color 0.3s, border-color 0.3s;
         }
         .stock-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         }
         .skeleton {
-            background-color: #2a2a4a;
+            background-color: var(--skeleton-color);
             border-radius: 0.25rem;
             animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
-        @keyframes pulse {
-            50% {
-                opacity: .5;
-            }
-        }
-        .tabular-nums {
-            font-variant-numeric: tabular-nums;
-        }
+        @keyframes pulse { 50% { opacity: .5; } }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
     </style>
 </head>
 <body class="p-4 sm:p-6">
     <div class="max-w-7xl mx-auto">
+        <!-- === NEW: Header with Live Clock and Theme Toggle === -->
         <header class="mb-6">
-            <h1 class="text-3xl font-bold text-white">Shylockz Dashboard</h1>
-            <!-- --- CHANGE: Text corrected to reflect API data source --- -->
-            <p class="text-gray-400">Live stock prices from Finnhub API.</p>
-            <div id="status-message" class="mt-2 text-xs text-gray-500">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl sm:text-3xl font-bold">Shylockz Dashboard</h1>
+                <div class="flex items-center space-x-4">
+                    <div id="live-clock" class="text-sm sm:text-base font-semibold tabular-nums text-right"></div>
+                    <button id="theme-toggle" class="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg-color)] focus:ring-indigo-500">
+                        <!-- Icons will be injected by JS -->
+                    </button>
+                </div>
+            </div>
+            <div id="status-message" class="mt-2 text-xs" style="color: var(--text-muted-color);">
                 Fetching live data...
             </div>
         </header>
 
         <div id="stock-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <!-- Stock cards will be injected here by JavaScript -->
+            <!-- Stock cards will be injected here -->
         </div>
     </div>
 
     <script>
+        // === NEW: Immediately apply theme from localStorage to prevent flash ===
+        (function() {
+            if (localStorage.getItem('theme') === 'light') {
+                document.documentElement.classList.add('light');
+            } else {
+                document.documentElement.classList.remove('light');
+            }
+        })();
+
         document.addEventListener('DOMContentLoaded', () => {
             const symbols = ['AAPL', 'NVDA', 'AMZN', 'GOOG', 'TSLA', 'META'];
             const grid = document.getElementById('stock-grid');
             const statusMessage = document.getElementById('status-message');
-            const chartObjects = {};
+            const liveClock = document.getElementById('live-clock');
+            const themeToggle = document.getElementById('theme-toggle');
             const uiElements = {};
 
+            const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
+            const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
+
+            // === NEW: Create Skeleton with more data points ===
             function createSkeletonCard(symbol) {
                 const card = document.createElement('div');
                 card.id = `stock-${symbol}`;
-                card.className = 'stock-card rounded-lg p-4 flex flex-col';
-
+                card.className = 'stock-card rounded-lg p-4 flex flex-col space-y-2';
                 card.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
+                    <div class="flex justify-between items-start">
                         <div>
-                            <h2 class="font-bold text-xl text-white">${symbol}</h2>
-                            <div class="text-xs text-gray-400">Last updated: <span class="last-updated">-</span></div>
+                            <h2 class="font-bold text-xl">${symbol}</h2>
+                            <div class="text-xs" style="color: var(--text-muted-color);">Updated: <span class="last-updated">-</span></div>
                         </div>
-                        <a href="https://finance.yahoo.com/quote/${symbol}" target="_blank" rel="noopener noreferrer" 
-                           class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-2 rounded-md transition-colors">
-                           Compare on Yahoo
-                        </a>
+                        <a href="https://finance.yahoo.com/quote/${symbol}" target="_blank" rel="noopener noreferrer" class="text-xs text-white font-semibold py-1 px-2 rounded-md transition-colors" style="background-color: var(--link-bg-color);" onmouseover="this.style.backgroundColor='var(--link-bg-hover-color)';" onmouseout="this.style.backgroundColor='var(--link-bg-color)';">Compare</a>
                     </div>
-                    <div class="price skeleton w-24 h-8"></div>
-                    <div class="change skeleton w-20 h-5 mt-1"></div>
-                    <div class="mt-4 chart-container h-24">
-                        <div class="skeleton w-full h-full"></div>
+                    <div class="flex items-end space-x-2">
+                        <div class="price skeleton w-28 h-8"></div>
+                        <div class="change skeleton w-24 h-5 mb-1"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs pt-2 border-t" style="border-color: var(--border-color);">
+                        <span style="color: var(--text-muted-color);">Open</span><span class="data-open skeleton w-16 h-4 justify-self-end"></span>
+                        <span style="color: var(--text-muted-color);">High</span><span class="data-high skeleton w-16 h-4 justify-self-end"></span>
+                        <span style="color: var(--text-muted-color);">Low</span><span class="data-low skeleton w-16 h-4 justify-self-end"></span>
+                        <span style="color: var(--text-muted-color);">Prev. Close</span><span class="data-prevclose skeleton w-16 h-4 justify-self-end"></span>
                     </div>
                 `;
                 grid.appendChild(card);
-
                 uiElements[symbol] = {
-                    card,
                     price: card.querySelector('.price'),
                     change: card.querySelector('.change'),
                     lastUpdated: card.querySelector('.last-updated'),
-                    chartContainer: card.querySelector('.chart-container')
+                    open: card.querySelector('.data-open'),
+                    high: card.querySelector('.data-high'),
+                    low: card.querySelector('.data-low'),
+                    prevClose: card.querySelector('.data-prevclose'),
                 };
             }
-            
-            function initializeChart(symbol) {
-                const options = {
-                    series: [{ data: [] }],
-                    chart: { type: 'area', height: '100%', sparkline: { enabled: true } },
-                    stroke: { curve: 'smooth', width: 2 },
-                    fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0, stops: [0, 90, 100] } },
-                    colors: ['#34D399'],
-                    tooltip: { enabled: false },
-                };
-                const chart = new ApexCharts(uiElements[symbol].chartContainer, options);
-                chart.render();
-                chartObjects[symbol] = chart;
+            symbols.forEach(createSkeletonCard);
+
+            // === NEW: Live Clock Functionality ===
+            function updateClock() {
+                liveClock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             }
+            setInterval(updateClock, 1000);
+            updateClock();
 
-            symbols.forEach(symbol => {
-                createSkeletonCard(symbol);
-                initializeChart(symbol);
-            });
+            // === NEW: Theme Toggle Functionality ===
+            function setupThemeToggle() {
+                const isLight = document.documentElement.classList.contains('light');
+                themeToggle.innerHTML = isLight ? moonIcon : sunIcon;
+                themeToggle.addEventListener('click', () => {
+                    const isCurrentlyLight = document.documentElement.classList.toggle('light');
+                    localStorage.setItem('theme', isCurrentlyLight ? 'light' : 'dark');
+                    themeToggle.innerHTML = isCurrentlyLight ? moonIcon : sunIcon;
+                });
+            }
+            setupThemeToggle();
 
-            async function fetchData(isInitialLoad = false) {
+            async function fetchData() {
                 try {
                     const response = await fetch('/.netlify/functions/get-stocks');
+                    if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
                     const stockData = await response.json();
-
-                    if (stockData.error) {
-                         throw new Error(stockData.error);
-                    }
-
-                    const lastUpdatedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    // --- CHANGE: Text corrected to reflect API data source ---
+                    if (stockData.error) throw new Error(stockData.error);
+                    
+                    // === NEW: Update time with seconds ===
+                    const lastUpdatedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                     statusMessage.textContent = `Data from Finnhub API. Last updated: ${lastUpdatedTime}`;
-                    statusMessage.classList.remove('text-red-400');
-                    statusMessage.classList.add('text-gray-500');
-
 
                     stockData.forEach(data => {
                         const ui = uiElements[data.symbol];
-                        if (!ui) return;
-
-                        if (data.error || typeof data.price !== 'number') {
-                            ui.price.classList.remove('skeleton', 'w-24', 'h-8');
-                            ui.price.className = 'text-sm text-red-400 font-semibold';
+                        if (!ui || data.error || typeof data.price !== 'number') {
                             ui.price.textContent = data.error || 'Data unavailable';
-                            ui.change.textContent = '';
+                            ui.price.classList.remove('skeleton', 'w-28', 'h-8');
+                            ui.price.className = 'text-sm text-red-400 font-semibold';
                             return;
                         }
 
+                        // --- Main Price Info ---
                         ui.price.textContent = `$${data.price.toFixed(2)}`;
                         ui.change.textContent = `${data.changeAmount >= 0 ? '+' : ''}${data.changeAmount.toFixed(2)} (${data.changePercent.toFixed(2)}%)`;
                         ui.lastUpdated.textContent = lastUpdatedTime;
+                        ui.price.classList.remove('skeleton', 'w-28', 'h-8');
+                        ui.change.classList.remove('skeleton', 'w-24', 'h-5', 'mb-1');
+                        ui.price.className = 'price text-2xl font-semibold tabular-nums';
+                        ui.change.className = `change text-sm font-medium tabular-nums ${data.changeAmount >= 0 ? 'text-green-500' : 'text-red-500'}`;
                         
-                        ui.price.classList.remove('skeleton', 'w-24', 'h-8');
-                        ui.change.classList.remove('skeleton', 'w-20', 'h-5', 'mt-1');
-                       
-                        const changeColor = data.changeAmount >= 0 ? 'text-green-400' : 'text-red-400';
-                        const chartColor = data.changeAmount >= 0 ? '#34D399' : '#F87171';
-                        
-                        ui.price.className = 'price text-2xl font-semibold text-white tabular-nums';
-                        ui.change.className = `change text-sm font-medium ${changeColor} tabular-nums`;
-                        
-                        if (isInitialLoad && ui.chartContainer.querySelector('.skeleton')) {
-                             ui.chartContainer.querySelector('.skeleton').remove();
-                        }
-                        
-                        // We are not getting historical data in this simplified API call, so we leave the chart empty.
+                        // --- NEW: Additional Data Points ---
+                        ui.open.textContent = `$${data.open.toFixed(2)}`;
+                        ui.high.textContent = `$${data.high.toFixed(2)}`;
+                        ui.low.textContent = `$${data.low.toFixed(2)}`;
+                        ui.prevClose.textContent = `$${data.prevClose.toFixed(2)}`;
+                        [ui.open, ui.high, ui.low, ui.prevClose].forEach(el => {
+                            el.classList.remove('skeleton', 'w-16', 'h-4');
+                            el.className = 'font-semibold tabular-nums justify-self-end';
+                        });
                     });
-
                 } catch (error) {
                     console.error('Failed to fetch stock data:', error);
                     statusMessage.textContent = `Error: ${error.message}. Retrying in 30s.`;
-                    statusMessage.classList.remove('text-gray-500');
-                    statusMessage.classList.add('text-red-400');
                 }
             }
             
-            fetchData(true);
+            fetchData();
             setInterval(fetchData, 30000);
         });
     </script>
 </body>
 </html>
+
