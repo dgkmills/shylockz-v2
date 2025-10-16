@@ -1,18 +1,22 @@
-# Node.js dependencies
+Node.js dependencies
+
 /node_modules
 
-# Environment variables file
+Environment variables file
+
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Build output
+Build output
+
 /dist
 /build
 /.netlify
 
-# System files
+System files
+
 .DS_Store
 Thumbs.db

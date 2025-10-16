@@ -26,150 +26,162 @@
         }
         .skeleton {
             background-color: #2a2a4a;
+            border-radius: 0.25rem;
             animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
         @keyframes pulse {
-            50% { opacity: .5; }
+            50% {
+                opacity: .5;
+            }
         }
         .tabular-nums {
             font-variant-numeric: tabular-nums;
         }
     </style>
 </head>
-<body class="p-4 sm:p-6 md:p-8">
-
+<body class="p-4 sm:p-6">
     <div class="max-w-7xl mx-auto">
-        <header class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl sm:text-3xl font-bold text-white">Shylockz Dashboard</h1>
-            <div class="text-right">
-                <p class="text-sm text-gray-400">Last updated</p>
-                <p id="last-updated-time" class="text-lg font-medium text-gray-300">--:--:-- --</p>
-            </div>
+        <header class="mb-6">
+            <h1 class="text-3xl font-bold text-white">Shylockz Dashboard</h1>
+            <p class="text-gray-400">Live stock prices and simple charts.</p>
         </header>
 
-        <main id="stock-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-            <!-- Stock card skeletons will be dynamically generated -->
-        </main>
-
-        <footer class="text-center mt-8 text-xs text-gray-500">
-            <p>This is a simulation and not for financial advice. Prices may be delayed.</p>
-        </footer>
+        <div id="stock-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Stock cards will be injected here by JavaScript -->
+        </div>
     </div>
 
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => console.log('ServiceWorker registration successful.'))
-                    .catch(err => console.error('ServiceWorker registration failed: ', err));
-            });
-        }
-
         document.addEventListener('DOMContentLoaded', () => {
-            // --- UPDATED: Now includes all 6 symbols to match the backend function ---
             const symbols = ['AAPL', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'TSLA'];
-            const stockCards = {};
-            const chartObjects = {};
             const grid = document.getElementById('stock-grid');
+            const chartObjects = {};
 
-            symbols.forEach(symbol => {
-                const cardEl = document.createElement('div');
-                cardEl.className = 'stock-card rounded-lg p-4 shadow-lg';
-                cardEl.setAttribute('data-symbol', symbol);
-                cardEl.innerHTML = `
-                    <div class="flex justify-between items-start">
+            // --- UI Elements Object ---
+            // This helps organize DOM references for each stock card.
+            const uiElements = {};
+
+            /**
+             * Creates the initial skeleton loading state for a stock card.
+             * @param {string} symbol - The stock symbol.
+             */
+            function createSkeletonCard(symbol) {
+                const card = document.createElement('div');
+                card.id = `stock-${symbol}`;
+                card.className = 'stock-card rounded-lg p-4 flex flex-col';
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
                         <div>
-                            <h2 class="text-2xl font-bold text-white">${symbol}</h2>
-                            <p class="text-xs text-gray-400 last-updated">--:--:-- --</p>
-                        </div>
-                        <div class="text-right">
-                            <div class="price skeleton w-24 h-8 rounded-md"></div>
-                            <div class="change skeleton w-20 h-5 mt-1 rounded-md"></div>
+                            <div class="font-bold text-xl text-white">${symbol}</div>
+                            <div class="text-xs text-gray-400">Last updated: <span class="last-updated">-</span></div>
                         </div>
                     </div>
-                    <div class="mt-4 h-20 chart-container">
-                        <div class="skeleton w-full h-full rounded-md"></div>
+                    <div class="price skeleton w-24 h-8"></div>
+                    <div class="change skeleton w-20 h-5 mt-1"></div>
+                    <div class="flex-grow mt-4 chart-container">
+                        <div class="skeleton w-full h-24"></div>
                     </div>
-                    <div class="error-message text-center text-red-400 text-xs mt-2 hidden"></div>
                 `;
-                grid.appendChild(cardEl);
-                
-                stockCards[symbol] = {
-                    card: cardEl,
-                    price: cardEl.querySelector('.price'),
-                    change: cardEl.querySelector('.change'),
-                    lastUpdated: cardEl.querySelector('.last-updated'),
-                    chartContainer: cardEl.querySelector('.chart-container'),
-                    errorMessage: cardEl.querySelector('.error-message')
-                };
+                grid.appendChild(card);
 
-                const options = {
-                    chart: { type: 'area', sparkline: { enabled: true } },
-                    stroke: { curve: 'straight', width: 2 },
-                    fill: { opacity: 0.3 },
-                    yaxis: { min: 0 },
-                    series: [{ name: 'price', data: [] }],
-                    colors: ['#4A5568'] 
+                // Store references to the dynamic parts of the card
+                uiElements[symbol] = {
+                    card,
+                    price: card.querySelector('.price'),
+                    change: card.querySelector('.change'),
+                    lastUpdated: card.querySelector('.last-updated'),
+                    chartContainer: card.querySelector('.chart-container')
                 };
-                chartObjects[symbol] = new ApexCharts(stockCards[symbol].chartContainer, options);
-                chartObjects[symbol].render();
+            }
+
+            /**
+             * Initializes an ApexChart for a given stock symbol.
+             * @param {string} symbol - The stock symbol.
+             */
+            function initializeChart(symbol) {
+                const options = {
+                    series: [{ data: [] }],
+                    chart: { type: 'area', height: '100%', sparkline: { enabled: true } },
+                    stroke: { curve: 'smooth', width: 2 },
+                    fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0, stops: [0, 90, 100] } },
+                    colors: ['#34D399'], // Default to green
+                    tooltip: { enabled: false },
+                };
+                const chart = new ApexCharts(uiElements[symbol].chartContainer, options);
+                chart.render();
+                chartObjects[symbol] = chart;
+            }
+            
+            // --- Create skeleton loaders and initialize charts on page load ---
+            symbols.forEach(symbol => {
+                createSkeletonCard(symbol);
+                initializeChart(symbol);
             });
 
-            const globalLastUpdated = document.getElementById('last-updated-time');
-
+            /**
+             * Fetches data from the serverless function and updates the UI.
+             */
             async function fetchData() {
                 try {
                     const response = await fetch('/.netlify/functions/get-stocks');
-                    if (!response.ok) {
-                        throw new Error(`Network response was not ok: ${response.statusText}`);
-                    }
                     const stockData = await response.json();
-                    
-                    globalLastUpdated.textContent = new Date().toLocaleTimeString();
+
+                    if (stockData.error) {
+                         throw new Error(stockData.error);
+                    }
 
                     stockData.forEach(data => {
-                        const ui = stockCards[data.symbol];
+                        const ui = uiElements[data.symbol];
                         if (!ui) return;
 
+                        // Handle and display errors from the API for a specific stock
                         if (data.error) {
-                            ui.errorMessage.textContent = data.error;
-                            ui.errorMessage.classList.remove('hidden');
-                            return; 
+                            ui.price.classList.remove('skeleton', 'w-24', 'h-8');
+                            ui.price.className = 'text-sm text-red-400';
+                            ui.price.textContent = data.error;
+                            ui.change.remove();
+                            if (ui.chartContainer.querySelector('.skeleton')) {
+                                ui.chartContainer.querySelector('.skeleton').remove();
+                            }
+                            return;
                         }
-                        
-                        ui.errorMessage.classList.add('hidden');
 
-                        ui.price.textContent = parseFloat(data.price).toFixed(2);
-                        ui.change.textContent = `${parseFloat(data.changeAmount).toFixed(2)} (${parseFloat(data.changePercent).toFixed(2)}%)`;
+                        // --- Update UI with fetched data ---
+                        ui.price.textContent = `$${data.price.toFixed(2)}`;
+                        ui.change.textContent = `${data.changeAmount >= 0 ? '+' : ''}${data.changeAmount.toFixed(2)} (${data.changePercent.toFixed(2)}%)`;
                         ui.lastUpdated.textContent = data.lastTradeTime;
                         
+                        // Remove skeleton classes once data is loaded
                         ui.price.classList.remove('skeleton', 'w-24', 'h-8');
                         ui.change.classList.remove('skeleton', 'w-20', 'h-5', 'mt-1');
                         if (ui.chartContainer.querySelector('.skeleton')) {
                              ui.chartContainer.querySelector('.skeleton').remove();
                         }
 
+                        // Set colors based on positive/negative change
                         const changeColor = data.changeAmount >= 0 ? 'text-green-400' : 'text-red-400';
                         const chartColor = data.changeAmount >= 0 ? '#34D399' : '#F87171';
                         
-                        // --- UPDATED: Added 'tabular-nums' for stable number display ---
+                        // Use tabular-nums to prevent layout shifts when numbers change
                         ui.price.className = 'price text-2xl font-semibold text-white tabular-nums';
                         ui.change.className = `change text-sm font-medium ${changeColor} tabular-nums`;
 
+                        // Update chart colors and data
                         chartObjects[data.symbol].updateOptions({ colors: [chartColor] });
                         chartObjects[data.symbol].updateSeries([{ data: data.historicalData }]);
                     });
 
                 } catch (error) {
                     console.error('Failed to fetch stock data:', error);
+                    // You could display a global error message here if needed
                 }
             }
 
-            // Fetch data on load, then every minute.
+            // Fetch data on initial load, then poll every minute.
             fetchData();
-            setInterval(fetchData, 60000); // 1 minute
+            setInterval(fetchData, 60000);
         });
     </script>
 </body>
 </html>
-
