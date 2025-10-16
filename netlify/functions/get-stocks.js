@@ -1,60 +1,42 @@
-const cheerio = require('cheerio');
-
 /**
- * Netlify serverless function to SCRAPE stock data directly from Yahoo Finance.
- * NOTE: This is a fragile, short-term solution designed to win a bet.
- * It will break if Yahoo Finance changes their website's HTML structure.
+ * Netlify serverless function to fetch stock data from the Finnhub API.
+ * This is the stable, reliable version using a professional API.
  */
 exports.handler = async (event, context) => {
+    const apiKey = process.env.FINNHUB_API_KEY;
+    if (!apiKey) {
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: 'Finnhub API key is not configured.' }),
+        };
+    }
+
+    // This list matches the frontend in index.html
     const symbols = ['AAPL', 'NVDA', 'AMZN', 'GOOG', 'TSLA', 'META'];
 
     const getStockData = async (symbol) => {
         try {
-            // We'll add a random user-agent to make our request look more like a real browser.
-            const headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            };
+            const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`;
+            const response = await fetch(quoteUrl);
+            const quoteData = await response.json();
 
-            const response = await fetch(`https://finance.yahoo.com/quote/${symbol}`, { headers });
-            if (!response.ok) {
-                throw new Error(`Failed to fetch Yahoo page for ${symbol}. Status: ${response.status}`);
+            if (quoteData.error || quoteData.c === 0) {
+                return { symbol, error: quoteData.error || 'No quote data available.' };
             }
 
-            const html = await response.text();
-            const $ = cheerio.load(html);
-
-            // This is the fragile part. We're looking for a specific element that contains the price.
-            // As of now, Yahoo uses a 'fin-streamer' element with a 'data-field' attribute.
-            const priceSelector = `fin-streamer[data-symbol='${symbol}'][data-field='regularMarketPrice']`;
-            const priceElement = $(priceSelector);
-
-            if (priceElement.length === 0) {
-                throw new Error(`Could not find price element for ${symbol}. The scraper might be broken.`);
-            }
-
-            const price = parseFloat(priceElement.attr('value'));
-            
-            // Scrape the change values as well.
-            const changeAmountSelector = `fin-streamer[data-symbol='${symbol}'][data-field='regularMarketChange']`;
-            const changePercentSelector = `fin-streamer[data-symbol='${symbol}'][data-field='regularMarketChangePercent']`;
-            
-            const changeAmount = parseFloat($(changeAmountSelector).attr('value'));
-            const changePercent = parseFloat($(changePercentSelector).attr('value'));
-
-            // The scraper doesn't get historical data, so we'll return an empty array for the chart.
-            // The price is all that matters for the bet.
+            // The Finnhub API provides the "live" data your friend wants:
+            // c = current price (last trade)
+            // d = change
+            // dp = percent change
             return {
                 symbol: symbol,
-                price: price,
-                changeAmount: changeAmount || 0,
-                changePercent: changePercent || 0,
-                historicalData: [], 
-                source: 'Yahoo Scraper'
+                price: quoteData.c,
+                changeAmount: quoteData.d,
+                changePercent: quoteData.dp,
             };
-
         } catch (error) {
-            console.error(`Error scraping data for ${symbol}:`, error.message);
-            return { symbol, error: `Scraping failed: ${error.message}` };
+            console.error(`Error fetching data for ${symbol}:`, error);
+            return { symbol, error: 'Failed to fetch API data.' };
         }
     };
 
@@ -64,16 +46,15 @@ exports.handler = async (event, context) => {
             statusCode: 200,
             headers: {
                 'Content-Type': 'application/json',
-                // We MUST disable caching to ensure we get live scrapes every time.
-                'Cache-Control': 'no-cache, no-store, must-revalidate'
+                // Add a short cache time to prevent hitting API limits too aggressively
+                'Cache-Control': 'public, max-age=15'
             },
             body: JSON.stringify(results),
         };
     } catch (error) {
-        console.error('Failed to process stock data:', error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: 'Failed to process scraped data.' }),
+            body: JSON.stringify({ error: 'Failed to process stock data.' }),
         };
     }
 };
