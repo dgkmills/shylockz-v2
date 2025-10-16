@@ -3,191 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shylockz - Stock Dashboard</title>
-    <meta name="theme-color" content="#111827"/>
+    <title>Shylockz Dashboard</title>
     <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1a1a2e">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #0f101a;
+            color: #e0e0e0;
         }
-        /* Custom styles for ApexCharts tooltips */
-        .apexcharts-tooltip {
-            background: #2d3748;
-            border-color: #4a5568;
-            color: #ffffff;
+        .stock-card {
+            background-color: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .stock-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .skeleton {
+            background-color: #2a2a4a;
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            50% { opacity: .5; }
         }
     </style>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-900 text-white">
-    <div class="container mx-auto p-4 md:p-8">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold">Shylockz Dashboard</h1>
-            <p id="last-updated" class="text-gray-400 text-sm mt-2">Last updated: --</p>
+<body class="p-4 sm:p-6 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl sm:text-3xl font-bold text-white">Shylockz Dashboard</h1>
+            <div class="text-right">
+                <p class="text-sm text-gray-400">Last updated</p>
+                <p id="last-updated-time" class="text-lg font-medium text-gray-300">--:--:-- --</p>
+            </div>
         </header>
 
-        <!-- The main grid for our stock cards -->
-        <main id="stock-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Stock cards will be dynamically injected here -->
-            <!-- Loading Skeletons -->
-            <div class="bg-gray-800 p-6 rounded-xl shadow-2xl animate-pulse">
-                <div class="h-6 bg-gray-700 rounded w-1/4 mb-2"></div>
-                <div class="h-4 bg-gray-700 rounded w-1/2 mb-4"></div>
-                <div class="h-8 bg-gray-700 rounded w-1/3 mb-4"></div>
-                <div class="h-4 bg-gray-700 rounded w-1/4 mb-6"></div>
-                <div class="h-20 bg-gray-700 rounded"></div>
-            </div>
-            <div class="bg-gray-800 p-6 rounded-xl shadow-2xl animate-pulse">
-                <div class="h-6 bg-gray-700 rounded w-1/4 mb-2"></div>
-                <div class="h-4 bg-gray-700 rounded w-1/2 mb-4"></div>
-                <div class="h-8 bg-gray-700 rounded w-1/3 mb-4"></div>
-                <div class="h-4 bg-gray-700 rounded w-1/4 mb-6"></div>
-                <div class="h-20 bg-gray-700 rounded"></div>
-            </div>
-            <div class="bg-gray-800 p-6 rounded-xl shadow-2xl animate-pulse">
-                <div class="h-6 bg-gray-700 rounded w-1/4 mb-2"></div>
-                <div class="h-4 bg-gray-700 rounded w-1/2 mb-4"></div>
-                <div class="h-8 bg-gray-700 rounded w-1/3 mb-4"></div>
-                <div class="h-4 bg-gray-700 rounded w-1/4 mb-6"></div>
-                <div class="h-20 bg-gray-700 rounded"></div>
-            </div>
+        <main id="stock-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            <!-- Stock card skeletons will be dynamically generated -->
         </main>
 
-        <footer class="text-center text-gray-500 text-xs mt-8">
-            <p>This is a simulation and not for financial advice. Prices update every 60 seconds.</p>
+        <footer class="text-center mt-8 text-xs text-gray-500">
+            <p>This is a simulation and not for financial advice. Prices may be delayed.</p>
         </footer>
     </div>
 
     <script>
-        const stockGrid = document.getElementById('stock-grid');
-        const lastUpdatedElement = document.getElementById('last-updated');
-        const stockCharts = {}; // Object to hold chart instances
-
-        const fetchStockData = async () => {
-            try {
-                // We will need to update this function later to get historical data
-                const response = await fetch('/.netlify/functions/get-stocks');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                
-                updateStockGrid(data);
-                updateTimestamp();
-
-            } catch (error) {
-                console.error("Failed to fetch stock data:", error);
-                stockGrid.innerHTML = `<p class="text-red-400 text-center col-span-full">Could not load stock data. Please try refreshing the page.</p>`;
-            }
-        };
-
-        const updateStockGrid = (stocks) => {
-            if (stockGrid.querySelector('.animate-pulse')) {
-                stockGrid.innerHTML = ''; // Clear loading skeletons on first load
-            }
-
-            stocks.forEach(stock => {
-                const changeColor = stock.change >= 0 ? 'text-green-400' : 'text-red-400';
-                const sign = stock.change >= 0 ? '+' : '';
-
-                const cardId = `stock-card-${stock.symbol}`;
-                let card = document.getElementById(cardId);
-
-                if (!card) { // If card doesn't exist, create it
-                    card = document.createElement('div');
-                    card.id = cardId;
-                    card.className = 'bg-gray-800 p-6 rounded-xl shadow-2xl flex flex-col';
-                    stockGrid.appendChild(card);
-                }
-
-                // Update card content
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h2 class="text-2xl font-bold">${stock.symbol}</h2>
-                            <p class="text-sm text-gray-400">${stock.name}</p>
-                        </div>
-                        <div class="text-right">
-                             <p class="text-3xl font-semibold">${stock.price.toFixed(2)}</p>
-                             <p class="font-medium ${changeColor}">
-                                ${sign}${stock.change.toFixed(2)} (${sign}${stock.changePercent.toFixed(2)}%)
-                             </p>
-                        </div>
-                    </div>
-                    <div class="flex-grow mt-4" id="chart-${stock.symbol}"></div>
-                `;
-                
-                // --- Chart Logic ---
-                const chartOptions = {
-                    series: [{
-                        // We will add real historical data here later
-                        data: stock.historicalData || [30, 40, 35, 50, 49, 60, 70, 91, 125] 
-                    }],
-                    chart: {
-                        type: 'area',
-                        height: 120,
-                        sparkline: { enabled: true },
-                        animations: { enabled: false }
-                    },
-                    stroke: { curve: 'straight', width: 2 },
-                    colors: [stock.change >= 0 ? '#48BB78' : '#F56565'],
-                    tooltip: {
-                        enabled: true,
-                        x: { show: false },
-                        y: {
-                            title: { formatter: (seriesName) => '$' },
-                        },
-                        marker: { show: false }
-                    },
-                     fill: {
-                        type: 'gradient',
-                        gradient: {
-                            shadeIntensity: 1,
-                            opacityFrom: 0.4,
-                            opacityTo: 0.1,
-                        }
-                    },
-                };
-
-                if (stockCharts[stock.symbol]) {
-                    stockCharts[stock.symbol].updateOptions(chartOptions);
-                } else {
-                    const chart = new ApexCharts(document.querySelector(`#chart-${stock.symbol}`), chartOptions);
-                    chart.render();
-                    stockCharts[stock.symbol] = chart;
-                }
-            });
-        };
-        
-        const updateTimestamp = () => {
-             const now = new Date();
-             const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second:'2-digit', hour12: true });
-             lastUpdatedElement.textContent = `Last updated ${timeString}`;
-        }
-
         // --- PWA Service Worker Registration ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    })
-                    .catch(err => {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
+                    .then(registration => console.log('ServiceWorker registration successful.'))
+                    .catch(err => console.error('ServiceWorker registration failed: ', err));
             });
         }
 
-        // Fetch data on initial load
-        fetchStockData();
+        document.addEventListener('DOMContentLoaded', () => {
+            const symbols = ['AAPL', 'NVDA', 'MSFT', 'AMZN'];
+            const stockCards = {};
+            const chartObjects = {};
+            const grid = document.getElementById('stock-grid');
 
-        // Fetch new data every 60 seconds
-        setInterval(fetchStockData, 60000);
+            // --- UI Initialization ---
+            symbols.forEach(symbol => {
+                // Create card structure dynamically
+                const cardEl = document.createElement('div');
+                cardEl.className = 'stock-card rounded-lg p-4 shadow-lg';
+                cardEl.setAttribute('data-symbol', symbol);
+                cardEl.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 class="text-2xl font-bold text-white">${symbol}</h2>
+                            <p class="text-xs text-gray-400 last-updated">--:--:-- --</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="price skeleton w-24 h-8 rounded-md"></div>
+                            <div class="change skeleton w-20 h-5 mt-1 rounded-md"></div>
+                        </div>
+                    </div>
+                    <div class="mt-4 h-20 chart-container">
+                        <div class="skeleton w-full h-full rounded-md"></div>
+                    </div>
+                    <div class="error-message text-center text-red-400 text-xs mt-2 hidden"></div>
+                `;
+                grid.appendChild(cardEl);
+                
+                // Store references to the card's elements
+                stockCards[symbol] = {
+                    card: cardEl,
+                    price: cardEl.querySelector('.price'),
+                    change: cardEl.querySelector('.change'),
+                    lastUpdated: cardEl.querySelector('.last-updated'),
+                    chartContainer: cardEl.querySelector('.chart-container'),
+                    errorMessage: cardEl.querySelector('.error-message')
+                };
+
+                // Initialize ApexCharts
+                const options = {
+                    chart: { type: 'area', sparkline: { enabled: true } },
+                    stroke: { curve: 'straight', width: 2 },
+                    fill: { opacity: 0.3 },
+                    yaxis: { min: 0 },
+                    series: [{ name: 'price', data: [] }],
+                    colors: ['#4A5568'] // Start with a neutral color
+                };
+                chartObjects[symbol] = new ApexCharts(stockCards[symbol].chartContainer, options);
+                chartObjects[symbol].render();
+            });
+
+            const globalLastUpdated = document.getElementById('last-updated-time');
+
+            // --- Live Data Fetching and Dashboard Update ---
+            async function fetchData() {
+                try {
+                    const response = await fetch('/.netlify/functions/get-stocks');
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.statusText}`);
+                    }
+                    const stockData = await response.json();
+                    
+                    globalLastUpdated.textContent = new Date().toLocaleTimeString();
+
+                    stockData.forEach(data => {
+                        const ui = stockCards[data.symbol];
+                        if (!ui) return;
+
+                        // --- Handle API Errors per Card ---
+                        if (data.error) {
+                            ui.errorMessage.textContent = data.error;
+                            ui.errorMessage.classList.remove('hidden');
+                            return; // Skip update for this card
+                        }
+                        
+                        ui.errorMessage.classList.add('hidden');
+
+                        // --- Update Text Content ---
+                        ui.price.textContent = parseFloat(data.price).toFixed(2);
+                        ui.change.textContent = `${parseFloat(data.changeAmount).toFixed(2)} (${parseFloat(data.changePercent).toFixed(2)}%)`;
+                        ui.lastUpdated.textContent = data.lastTradeTime;
+                        
+                        // --- Remove Skeleton Classes After First Load ---
+                        ui.price.classList.remove('skeleton', 'w-24', 'h-8');
+                        ui.change.classList.remove('skeleton', 'w-20', 'h-5', 'mt-1');
+                        if (ui.chartContainer.querySelector('.skeleton')) {
+                             ui.chartContainer.querySelector('.skeleton').remove();
+                        }
+
+                        // --- Update Colors Based on Change ---
+                        const changeColor = data.changeAmount >= 0 ? 'text-green-400' : 'text-red-400';
+                        const chartColor = data.changeAmount >= 0 ? '#34D399' : '#F87171';
+                        
+                        ui.price.className = 'price text-2xl font-semibold text-white';
+                        ui.change.className = `change text-sm font-medium ${changeColor}`;
+
+                        // --- Update Chart Data and Color ---
+                        chartObjects[data.symbol].updateOptions({ colors: [chartColor] });
+                        chartObjects[data.symbol].updateSeries([{ data: data.historicalData }]);
+                    });
+
+                } catch (error) {
+                    console.error('Failed to fetch stock data:', error);
+                    // You could display a global error banner here
+                }
+            }
+
+            // Fetch data on load, then every 2 minutes to respect API limits
+            fetchData();
+            setInterval(fetchData, 120000); // 2 minutes
+        });
     </script>
 </body>
 </html>
-
