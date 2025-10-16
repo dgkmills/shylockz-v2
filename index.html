@@ -70,17 +70,32 @@
                 card.id = `stock-${symbol}`;
                 card.className = 'stock-card rounded-lg p-4 flex flex-col';
 
+                // --- CHANGE ---
+                // Added a second link for Robinhood next to the Yahoo Finance icon.
+                // This provides a direct, reliable way for the user to cross-reference prices.
                 card.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <div class="font-bold text-xl text-white">${symbol}</div>
-                            <div class="text-xs text-gray-400">Last updated: <span class="last-updated">-</span></div>
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex items-center gap-3">
+                            <h2 class="font-bold text-xl text-white">${symbol}</h2>
+                            <div class="flex items-center gap-2">
+                                <a href="https://finance.yahoo.com/quote/${symbol}" target="_blank" rel="noopener noreferrer" title="View ${symbol} on Yahoo Finance" class="text-gray-500 hover:text-blue-400 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                </a>
+                                <a href="https://robinhood.com/stocks/${symbol}" target="_blank" rel="noopener noreferrer" title="View ${symbol} on Robinhood" class="text-gray-500 hover:text-green-400 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M19.742 6.075c-2.38-.855-4.57-2.31-4.57-2.31s-1.14 2.085-3.085 2.565c-1.14.285-2.28.19-2.28.19s-4.37-1.425-5.32-1.805c-1.235-.475-1.9.57-1.9.57s.855 1.52.855 2.09c0 .57-.285 2.755-.285 2.755s-1.045 2.09 1.14 2.185c1.52.095 3.705-1.045 3.705-1.045s.38 1.805 2.47 2.47c1.33.475 2.755.285 2.755.285s2.38 1.425 4.57 1.805c2.185.38 3.135-1.045 3.135-1.045s-2.09-1.615-2.28-2.66c-.19-.95.76-2.09.76-2.09s3.235-1.805 2.565-3.8C22.612 7.03 21.077 6.55 19.742 6.075z"/>
+                                    </svg>
+                                </a>
+                            </div>
                         </div>
+                        <div class="text-xs text-gray-400">Last updated: <span class="last-updated">-</span></div>
                     </div>
                     <div class="price skeleton w-24 h-8"></div>
                     <div class="change skeleton w-20 h-5 mt-1"></div>
-                    <div class="flex-grow mt-4 chart-container">
-                        <div class="skeleton w-full h-24"></div>
+                    <div class="mt-4 chart-container h-24">
+                        <div class="skeleton w-full h-full"></div>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -185,3 +200,4 @@
     </script>
 </body>
 </html>
+
