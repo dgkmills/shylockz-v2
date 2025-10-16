@@ -1,4 +1,5 @@
-const CACHE_NAME = 'shylockz-cache-v2'; // Bumped version to ensure update
+// === CHANGE: Incremented cache version to force an update ===
+const CACHE_NAME = 'shylockz-cache-v3'; 
 const urlsToCache = [
   '/',
   '/index.html',
@@ -8,6 +9,8 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
+  // Bypasses the waiting state to activate the new service worker immediately.
+  self.skipWaiting(); 
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -18,30 +21,17 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
-  const requestUrl = new URL(event.request.url);
-
-  // --- CHANGE: Network-first strategy for API calls ---
-  // If the request is for our serverless function, always try the network first.
-  // This ensures we get live data, not cached data.
-  if (requestUrl.pathname.startsWith('/.netlify/functions/')) {
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        // If the network fails (e.g., offline), we can optionally serve a cached response if one exists.
-        // For now, we'll just let it fail to make it clear there's no connection.
-        console.error('API fetch failed, and no cache fallback for API calls.');
-      })
-    );
+  // For API calls, always go to the network first.
+  if (event.request.url.includes('/.netlify/functions/')) {
+    event.respondWith(fetch(event.request));
     return;
   }
-
-  // For all other requests (app shell, fonts, etc.), use the cache-first strategy.
+  
+  // For all other requests, use a cache-first strategy.
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        if (response) {
-          return response; // Serve from cache
-        }
-        return fetch(event.request); // Fetch from network
+        return response || fetch(event.request);
       })
   );
 });
@@ -53,10 +43,13 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     })
+    // === NEW: Ensures the new service worker takes control immediately ===
+    .then(() => self.clients.claim())
   );
 });
