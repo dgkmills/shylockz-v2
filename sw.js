@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shylockz-cache-v1';
+const CACHE_NAME = 'shylockz-cache-v2'; // Bumped version to ensure update
 const urlsToCache = [
   '/',
   '/index.html',
@@ -7,7 +7,6 @@ const urlsToCache = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
 ];
 
-// Install the service worker and cache the app shell
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -18,22 +17,35 @@ self.addEventListener('install', event => {
   );
 });
 
-// Serve cached content when offline
 self.addEventListener('fetch', event => {
+  const requestUrl = new URL(event.request.url);
+
+  // --- CHANGE: Network-first strategy for API calls ---
+  // If the request is for our serverless function, always try the network first.
+  // This ensures we get live data, not cached data.
+  if (requestUrl.pathname.startsWith('/.netlify/functions/')) {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        // If the network fails (e.g., offline), we can optionally serve a cached response if one exists.
+        // For now, we'll just let it fail to make it clear there's no connection.
+        console.error('API fetch failed, and no cache fallback for API calls.');
+      })
+    );
+    return;
+  }
+
+  // For all other requests (app shell, fonts, etc.), use the cache-first strategy.
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Cache hit - return response
         if (response) {
-          return response;
+          return response; // Serve from cache
         }
-        return fetch(event.request);
-      }
-    )
+        return fetch(event.request); // Fetch from network
+      })
   );
 });
 
-// Update the cache with a new version
 self.addEventListener('activate', event => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(

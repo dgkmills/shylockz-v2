@@ -58,8 +58,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const symbols = ['AAPL', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'TSLA'];
             const grid = document.getElementById('stock-grid');
-            
-            // --- This version removes the chart objects for simplicity and stability ---
+            const chartObjects = {};
             const uiElements = {};
 
             function createSkeletonCard(symbol) {
@@ -73,8 +72,6 @@
                             <h2 class="font-bold text-xl text-white">${symbol}</h2>
                             <div class="text-xs text-gray-400">Last updated: <span class="last-updated">-</span></div>
                         </div>
-                        <!-- --- CHANGE --- -->
-                        <!-- Made the Yahoo Finance link a more prominent button to embrace it as a feature. -->
                         <a href="https://finance.yahoo.com/quote/${symbol}" target="_blank" rel="noopener noreferrer" 
                            class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-2 rounded-md transition-colors">
                            Compare on Yahoo
@@ -82,8 +79,9 @@
                     </div>
                     <div class="price skeleton w-24 h-8"></div>
                     <div class="change skeleton w-20 h-5 mt-1"></div>
-                    <div class="mt-4 text-xs text-gray-500">
-                        Historical charts are disabled in this stable version.
+                    <!-- --- CHANGE: Chart container re-enabled --- -->
+                    <div class="mt-4 chart-container h-24">
+                        <div class="skeleton w-full h-full"></div>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -92,22 +90,42 @@
                     card,
                     price: card.querySelector('.price'),
                     change: card.querySelector('.change'),
-                    lastUpdated: card.querySelector('.last-updated')
+                    lastUpdated: card.querySelector('.last-updated'),
+                    chartContainer: card.querySelector('.chart-container')
                 };
             }
             
-            symbols.forEach(createSkeletonCard);
+            // --- CHANGE: Chart initialization re-enabled ---
+            function initializeChart(symbol) {
+                const options = {
+                    series: [{ data: [] }],
+                    chart: { type: 'area', height: '100%', sparkline: { enabled: true } },
+                    stroke: { curve: 'smooth', width: 2 },
+                    fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0, stops: [0, 90, 100] } },
+                    colors: ['#34D399'],
+                    tooltip: { enabled: false },
+                };
+                const chart = new ApexCharts(uiElements[symbol].chartContainer, options);
+                chart.render();
+                chartObjects[symbol] = chart;
+            }
 
-            async function fetchData() {
+            symbols.forEach(symbol => {
+                createSkeletonCard(symbol);
+                initializeChart(symbol);
+            });
+
+            async function fetchData(isInitialLoad = false) {
                 try {
-                    // --- CHANGE ---
-                    // Reverted to the stable 'get-stocks' Netlify function.
                     const response = await fetch('/.netlify/functions/get-stocks');
                     const stockData = await response.json();
 
                     if (stockData.error) {
                          throw new Error(stockData.error);
                     }
+
+                    // --- CHANGE: Use browser's current time for "last updated" ---
+                    const lastUpdatedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                     stockData.forEach(data => {
                         const ui = uiElements[data.symbol];
@@ -123,20 +141,27 @@
 
                         ui.price.textContent = `$${data.price.toFixed(2)}`;
                         ui.change.textContent = `${data.changeAmount >= 0 ? '+' : ''}${data.changeAmount.toFixed(2)} (${data.changePercent.toFixed(2)}%)`;
-                        ui.lastUpdated.textContent = data.lastTradeTime;
+                        ui.lastUpdated.textContent = lastUpdatedTime;
                         
                         ui.price.classList.remove('skeleton', 'w-24', 'h-8');
                         ui.change.classList.remove('skeleton', 'w-20', 'h-5', 'mt-1');
                        
                         const changeColor = data.changeAmount >= 0 ? 'text-green-400' : 'text-red-400';
+                        const chartColor = data.changeAmount >= 0 ? '#34D399' : '#F87171';
                         
                         ui.price.className = 'price text-2xl font-semibold text-white tabular-nums';
                         ui.change.className = `change text-sm font-medium ${changeColor} tabular-nums`;
+                        
+                        // --- CHANGE: Update charts with historical data ---
+                        if (isInitialLoad && ui.chartContainer.querySelector('.skeleton')) {
+                             ui.chartContainer.querySelector('.skeleton').remove();
+                        }
+                        chartObjects[data.symbol].updateOptions({ colors: [chartColor] });
+                        chartObjects[data.symbol].updateSeries([{ data: data.historicalData }]);
                     });
 
                 } catch (error) {
                     console.error('Failed to fetch stock data:', error);
-                    // Display a global error if the whole fetch fails
                     const header = document.querySelector('header p');
                     if(header) {
                         header.textContent = `Error: ${error.message}`;
@@ -145,8 +170,10 @@
                 }
             }
 
-            fetchData();
-            setInterval(fetchData, 60000);
+            // --- CHANGE: Pass true for initial load to handle skeleton removal ---
+            fetchData(true);
+            // --- CHANGE: Increased refresh rate to every 30 seconds ---
+            setInterval(fetchData, 30000);
         });
     </script>
 </body>
