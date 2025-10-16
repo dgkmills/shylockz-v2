@@ -1,0 +1,14 @@
+{
+  "name": "shylockz-v2",
+  "version": "1.0.0",
+  "description": "A modern stock dashboard PWA.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  }
+}
