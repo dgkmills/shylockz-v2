@@ -18,7 +18,7 @@
         .stock-card {
             background-color: #1a1a2e;
             border: 1px solid #2a2a4a;
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.3s ease;
         }
         .stock-card:hover {
             transform: translateY(-5px);
@@ -29,13 +29,15 @@
             border-radius: 0.25rem;
             animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
-        @keyframes pulse {
-            50% {
-                opacity: .5;
-            }
+        @keyframes pulse { 50% { opacity: .5; } }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .card-flash {
+            border-color: #4f46e5;
+            animation: flash 1s ease-out;
         }
-        .tabular-nums {
-            font-variant-numeric: tabular-nums;
+        @keyframes flash {
+            0% { border-color: #4f46e5; }
+            100% { border-color: #2a2a4a; }
         }
     </style>
 </head>
@@ -43,14 +45,19 @@
     <div class="max-w-7xl mx-auto">
         <header class="mb-6">
             <h1 class="text-3xl font-bold text-white">Shylockz Dashboard</h1>
-            <p class="text-gray-400">Live stock prices powered by a stable, official API.</p>
-            <div class="mt-2 text-xs text-gray-500">
-                Data provided by Finnhub. Market data may have slight delays.
+            <p class="text-gray-400">Official Market Price Snapshot Tool</p>
+            
+            <!-- --- CHANGE: "Snapshot" Button --- -->
+            <div class="mt-4">
+                <button id="snapshot-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full sm:w-auto">
+                    Capture Latest Official Prices
+                </button>
+                <p class="text-xs text-gray-500 mt-2">Fetches the latest official closing price. After-hours data is a premium feature not available on this free plan.</p>
             </div>
         </header>
 
         <div id="stock-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <!-- Stock cards will be injected here by JavaScript -->
+            <!-- Stock cards will be injected here -->
         </div>
     </div>
 
@@ -58,6 +65,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const symbols = ['AAPL', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'TSLA'];
             const grid = document.getElementById('stock-grid');
+            const snapshotBtn = document.getElementById('snapshot-btn');
             const chartObjects = {};
             const uiElements = {};
 
@@ -65,27 +73,19 @@
                 const card = document.createElement('div');
                 card.id = `stock-${symbol}`;
                 card.className = 'stock-card rounded-lg p-4 flex flex-col';
-
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-2">
                         <div>
                             <h2 class="font-bold text-xl text-white">${symbol}</h2>
                             <div class="text-xs text-gray-400">Last updated: <span class="last-updated">-</span></div>
                         </div>
-                        <a href="https://finance.yahoo.com/quote/${symbol}" target="_blank" rel="noopener noreferrer" 
-                           class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-2 rounded-md transition-colors">
-                           Compare on Yahoo
-                        </a>
+                        <a href="https://finance.yahoo.com/quote/${symbol}" target="_blank" rel="noopener noreferrer" class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-2 rounded-md transition-colors">Compare on Yahoo</a>
                     </div>
                     <div class="price skeleton w-24 h-8"></div>
                     <div class="change skeleton w-20 h-5 mt-1"></div>
-                    <!-- --- CHANGE: Chart container re-enabled --- -->
-                    <div class="mt-4 chart-container h-24">
-                        <div class="skeleton w-full h-full"></div>
-                    </div>
+                    <div class="mt-4 chart-container h-24"><div class="skeleton w-full h-full"></div></div>
                 `;
                 grid.appendChild(card);
-
                 uiElements[symbol] = {
                     card,
                     price: card.querySelector('.price'),
@@ -94,8 +94,7 @@
                     chartContainer: card.querySelector('.chart-container')
                 };
             }
-            
-            // --- CHANGE: Chart initialization re-enabled ---
+
             function initializeChart(symbol) {
                 const options = {
                     series: [{ data: [] }],
@@ -116,28 +115,23 @@
             });
 
             async function fetchData(isInitialLoad = false) {
+                snapshotBtn.disabled = true;
+                snapshotBtn.textContent = 'Fetching...';
+
                 try {
                     const response = await fetch('/.netlify/functions/get-stocks');
                     const stockData = await response.json();
-
-                    if (stockData.error) {
-                         throw new Error(stockData.error);
-                    }
-
-                    // --- CHANGE: Use browser's current time for "last updated" ---
+                    if (stockData.error) throw new Error(stockData.error);
+                    
                     const lastUpdatedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                     stockData.forEach(data => {
                         const ui = uiElements[data.symbol];
-                        if (!ui) return;
+                        if (!ui || data.error) return;
 
-                        if (data.error) {
-                            ui.price.classList.remove('skeleton', 'w-24', 'h-8');
-                            ui.price.className = 'text-sm text-red-400';
-                            ui.price.textContent = data.error;
-                            ui.change.remove();
-                            return;
-                        }
+                        ui.card.classList.remove('card-flash'); // Remove class to re-trigger animation
+                        void ui.card.offsetWidth; // Trigger reflow
+                        ui.card.classList.add('card-flash');
 
                         ui.price.textContent = `$${data.price.toFixed(2)}`;
                         ui.change.textContent = `${data.changeAmount >= 0 ? '+' : ''}${data.changeAmount.toFixed(2)} (${data.changePercent.toFixed(2)}%)`;
@@ -152,7 +146,6 @@
                         ui.price.className = 'price text-2xl font-semibold text-white tabular-nums';
                         ui.change.className = `change text-sm font-medium ${changeColor} tabular-nums`;
                         
-                        // --- CHANGE: Update charts with historical data ---
                         if (isInitialLoad && ui.chartContainer.querySelector('.skeleton')) {
                              ui.chartContainer.querySelector('.skeleton').remove();
                         }
@@ -162,18 +155,19 @@
 
                 } catch (error) {
                     console.error('Failed to fetch stock data:', error);
-                    const header = document.querySelector('header p');
-                    if(header) {
-                        header.textContent = `Error: ${error.message}`;
-                        header.classList.add('text-red-400');
+                    const headerP = document.querySelector('header p');
+                    if(headerP) {
+                        headerP.textContent = `Error: ${error.message}`;
+                        headerP.classList.add('text-red-400');
                     }
+                } finally {
+                    snapshotBtn.disabled = false;
+                    snapshotBtn.textContent = 'Capture Latest Official Prices';
                 }
             }
 
-            // --- CHANGE: Pass true for initial load to handle skeleton removal ---
-            fetchData(true);
-            // --- CHANGE: Increased refresh rate to every 30 seconds ---
-            setInterval(fetchData, 30000);
+            fetchData(true); // Fetch on initial load
+            snapshotBtn.addEventListener('click', () => fetchData(false)); // Fetch on button click
         });
     </script>
 </body>

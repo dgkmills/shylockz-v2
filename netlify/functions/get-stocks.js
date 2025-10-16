@@ -25,7 +25,7 @@ exports.handler = async (event, context) => {
             const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`;
             const quotePromise = fetch(quoteUrl).then(res => res.json());
 
-            // --- Fetch Historical Data for Charts ---
+            // --- CHANGE: Re-enabled fetching historical data for charts ---
             const to = Math.floor(Date.now() / 1000);
             const from = to - (24 * 60 * 60); // 24 hours ago
             const candleUrl = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=15&from=${from}&to=${to}&token=${apiKey}`;
@@ -41,6 +41,7 @@ exports.handler = async (event, context) => {
                 return { symbol, error: errorMsg };
             }
 
+            // Map the candle data to the format ApexCharts expects
             const historicalData = candleData.c ? candleData.c.map((price, index) => {
                 return { x: candleData.t[index] * 1000, y: price };
             }) : [];
