@@ -44,6 +44,19 @@
         <header class="mb-6">
             <h1 class="text-3xl font-bold text-white">Shylockz Dashboard</h1>
             <p class="text-gray-400">Live stock prices and simple charts.</p>
+            <!-- --- CHANGE --- -->
+            <!-- Updated data attribution to reflect Yahoo Finance as the source. -->
+            <div class="mt-2 text-xs text-gray-500 flex items-center gap-1.5">
+                <span>Data provided by Yahoo Finance</span>
+                <div class="group relative flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 a 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="absolute bottom-full mb-2 w-56 rounded-md bg-gray-700 p-2 text-center text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        Data is sourced from an unofficial Yahoo Finance endpoint and is for reference only.
+                    </span>
+                </div>
+            </div>
         </header>
 
         <div id="stock-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -57,22 +70,13 @@
             const grid = document.getElementById('stock-grid');
             const chartObjects = {};
 
-            // --- UI Elements Object ---
-            // This helps organize DOM references for each stock card.
             const uiElements = {};
 
-            /**
-             * Creates the initial skeleton loading state for a stock card.
-             * @param {string} symbol - The stock symbol.
-             */
             function createSkeletonCard(symbol) {
                 const card = document.createElement('div');
                 card.id = `stock-${symbol}`;
                 card.className = 'stock-card rounded-lg p-4 flex flex-col';
 
-                // --- CHANGE ---
-                // Added a second link for Robinhood next to the Yahoo Finance icon.
-                // This provides a direct, reliable way for the user to cross-reference prices.
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-2">
                         <div class="flex items-center gap-3">
@@ -100,7 +104,6 @@
                 `;
                 grid.appendChild(card);
 
-                // Store references to the dynamic parts of the card
                 uiElements[symbol] = {
                     card,
                     price: card.querySelector('.price'),
@@ -110,17 +113,13 @@
                 };
             }
 
-            /**
-             * Initializes an ApexChart for a given stock symbol.
-             * @param {string} symbol - The stock symbol.
-             */
             function initializeChart(symbol) {
                 const options = {
                     series: [{ data: [] }],
                     chart: { type: 'area', height: '100%', sparkline: { enabled: true } },
                     stroke: { curve: 'smooth', width: 2 },
                     fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0, stops: [0, 90, 100] } },
-                    colors: ['#34D399'], // Default to green
+                    colors: ['#34D399'],
                     tooltip: { enabled: false },
                 };
                 const chart = new ApexCharts(uiElements[symbol].chartContainer, options);
@@ -128,18 +127,16 @@
                 chartObjects[symbol] = chart;
             }
             
-            // --- Create skeleton loaders and initialize charts on page load ---
             symbols.forEach(symbol => {
                 createSkeletonCard(symbol);
                 initializeChart(symbol);
             });
 
-            /**
-             * Fetches data from the serverless function and updates the UI.
-             */
             async function fetchData() {
                 try {
-                    const response = await fetch('/.netlify/functions/get-stocks');
+                    // --- CHANGE ---
+                    // Switched the API call to the new serverless function.
+                    const response = await fetch('/.netlify/functions/get-yahoo-stocks');
                     const stockData = await response.json();
 
                     if (stockData.error) {
@@ -150,7 +147,6 @@
                         const ui = uiElements[data.symbol];
                         if (!ui) return;
 
-                        // Handle and display errors from the API for a specific stock
                         if (data.error) {
                             ui.price.classList.remove('skeleton', 'w-24', 'h-8');
                             ui.price.className = 'text-sm text-red-400';
@@ -162,38 +158,31 @@
                             return;
                         }
 
-                        // --- Update UI with fetched data ---
                         ui.price.textContent = `$${data.price.toFixed(2)}`;
                         ui.change.textContent = `${data.changeAmount >= 0 ? '+' : ''}${data.changeAmount.toFixed(2)} (${data.changePercent.toFixed(2)}%)`;
                         ui.lastUpdated.textContent = data.lastTradeTime;
                         
-                        // Remove skeleton classes once data is loaded
                         ui.price.classList.remove('skeleton', 'w-24', 'h-8');
                         ui.change.classList.remove('skeleton', 'w-20', 'h-5', 'mt-1');
                         if (ui.chartContainer.querySelector('.skeleton')) {
                              ui.chartContainer.querySelector('.skeleton').remove();
                         }
 
-                        // Set colors based on positive/negative change
                         const changeColor = data.changeAmount >= 0 ? 'text-green-400' : 'text-red-400';
                         const chartColor = data.changeAmount >= 0 ? '#34D399' : '#F87171';
                         
-                        // Use tabular-nums to prevent layout shifts when numbers change
                         ui.price.className = 'price text-2xl font-semibold text-white tabular-nums';
                         ui.change.className = `change text-sm font-medium ${changeColor} tabular-nums`;
 
-                        // Update chart colors and data
                         chartObjects[data.symbol].updateOptions({ colors: [chartColor] });
                         chartObjects[data.symbol].updateSeries([{ data: data.historicalData }]);
                     });
 
                 } catch (error) {
                     console.error('Failed to fetch stock data:', error);
-                    // You could display a global error message here if needed
                 }
             }
 
-            // Fetch data on initial load, then poll every minute.
             fetchData();
             setInterval(fetchData, 60000);
         });
