@@ -1,1 +1,18 @@
-Ignore Node.js dependencies/node_modulesIgnore environment variables file.env.env.local.env.development.local.env.test.local.env.production.localIgnore build output/dist/build/.netlifyIgnore system files.DS_StoreThumbs.db
+# Node.js dependencies
+/node_modules
+
+# Environment variables file
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build output
+/dist
+/build
+/.netlify
+
+# System files
+.DS_Store
+Thumbs.db
