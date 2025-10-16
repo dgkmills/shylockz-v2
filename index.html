@@ -31,6 +31,9 @@
         @keyframes pulse {
             50% { opacity: .5; }
         }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
     </style>
 </head>
 <body class="p-4 sm:p-6 md:p-8">
@@ -54,7 +57,6 @@
     </div>
 
     <script>
-        // --- PWA Service Worker Registration ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
@@ -64,14 +66,13 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            const symbols = ['AAPL', 'NVDA', 'MSFT', 'AMZN'];
+            // --- UPDATED: Now includes all 6 symbols to match the backend function ---
+            const symbols = ['AAPL', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'TSLA'];
             const stockCards = {};
             const chartObjects = {};
             const grid = document.getElementById('stock-grid');
 
-            // --- UI Initialization ---
             symbols.forEach(symbol => {
-                // Create card structure dynamically
                 const cardEl = document.createElement('div');
                 cardEl.className = 'stock-card rounded-lg p-4 shadow-lg';
                 cardEl.setAttribute('data-symbol', symbol);
@@ -93,7 +94,6 @@
                 `;
                 grid.appendChild(cardEl);
                 
-                // Store references to the card's elements
                 stockCards[symbol] = {
                     card: cardEl,
                     price: cardEl.querySelector('.price'),
@@ -103,14 +103,13 @@
                     errorMessage: cardEl.querySelector('.error-message')
                 };
 
-                // Initialize ApexCharts
                 const options = {
                     chart: { type: 'area', sparkline: { enabled: true } },
                     stroke: { curve: 'straight', width: 2 },
                     fill: { opacity: 0.3 },
                     yaxis: { min: 0 },
                     series: [{ name: 'price', data: [] }],
-                    colors: ['#4A5568'] // Start with a neutral color
+                    colors: ['#4A5568'] 
                 };
                 chartObjects[symbol] = new ApexCharts(stockCards[symbol].chartContainer, options);
                 chartObjects[symbol].render();
@@ -118,7 +117,6 @@
 
             const globalLastUpdated = document.getElementById('last-updated-time');
 
-            // --- Live Data Fetching and Dashboard Update ---
             async function fetchData() {
                 try {
                     const response = await fetch('/.netlify/functions/get-stocks');
@@ -133,49 +131,45 @@
                         const ui = stockCards[data.symbol];
                         if (!ui) return;
 
-                        // --- Handle API Errors per Card ---
                         if (data.error) {
                             ui.errorMessage.textContent = data.error;
                             ui.errorMessage.classList.remove('hidden');
-                            return; // Skip update for this card
+                            return; 
                         }
                         
                         ui.errorMessage.classList.add('hidden');
 
-                        // --- Update Text Content ---
                         ui.price.textContent = parseFloat(data.price).toFixed(2);
                         ui.change.textContent = `${parseFloat(data.changeAmount).toFixed(2)} (${parseFloat(data.changePercent).toFixed(2)}%)`;
                         ui.lastUpdated.textContent = data.lastTradeTime;
                         
-                        // --- Remove Skeleton Classes After First Load ---
                         ui.price.classList.remove('skeleton', 'w-24', 'h-8');
                         ui.change.classList.remove('skeleton', 'w-20', 'h-5', 'mt-1');
                         if (ui.chartContainer.querySelector('.skeleton')) {
                              ui.chartContainer.querySelector('.skeleton').remove();
                         }
 
-                        // --- Update Colors Based on Change ---
                         const changeColor = data.changeAmount >= 0 ? 'text-green-400' : 'text-red-400';
                         const chartColor = data.changeAmount >= 0 ? '#34D399' : '#F87171';
                         
-                        ui.price.className = 'price text-2xl font-semibold text-white';
-                        ui.change.className = `change text-sm font-medium ${changeColor}`;
+                        // --- UPDATED: Added 'tabular-nums' for stable number display ---
+                        ui.price.className = 'price text-2xl font-semibold text-white tabular-nums';
+                        ui.change.className = `change text-sm font-medium ${changeColor} tabular-nums`;
 
-                        // --- Update Chart Data and Color ---
                         chartObjects[data.symbol].updateOptions({ colors: [chartColor] });
                         chartObjects[data.symbol].updateSeries([{ data: data.historicalData }]);
                     });
 
                 } catch (error) {
                     console.error('Failed to fetch stock data:', error);
-                    // You could display a global error banner here
                 }
             }
 
-            // Fetch data on load, then every 2 minutes to respect API limits
+            // Fetch data on load, then every minute.
             fetchData();
-            setInterval(fetchData, 120000); // 2 minutes
+            setInterval(fetchData, 60000); // 1 minute
         });
     </script>
 </body>
 </html>
+
