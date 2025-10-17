@@ -1,5 +1,5 @@
-// === CHANGE: Incremented cache version to force an update ===
-const CACHE_NAME = 'shylockz-cache-v3'; 
+// Cache name has been updated for the new project name.
+const CACHE_NAME = 'stocktool-cache-v1'; 
 const urlsToCache = [
   '/',
   '/index.html',
@@ -49,7 +49,7 @@ self.addEventListener('activate', event => {
         })
       );
     })
-    // === NEW: Ensures the new service worker takes control immediately ===
+    // Ensures the new service worker takes control immediately
     .then(() => self.clients.claim())
   );
 });

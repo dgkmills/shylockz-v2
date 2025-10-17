@@ -1,6 +1,6 @@
 {
-  "name": "Shylockz Stock Dashboard",
-  "short_name": "Shylockz",
+  "name": "Stock Tool Dashboard",
+  "short_name": "StockTool",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#111827",

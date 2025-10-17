@@ -1,5 +1,5 @@
 {
-  "name": "shylockz-v2",
+  "name": "stock-tool",
   "version": "1.0.0",
   "description": "A modern stock dashboard PWA.",
   "main": "index.js",
@@ -10,4 +10,3 @@
   "license": "ISC",
   "dependencies": {}
 }
-
