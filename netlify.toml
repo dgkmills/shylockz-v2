@@ -20,3 +20,19 @@
     # Controls how much referrer information is sent with requests.
     Referrer-Policy = "strict-origin-when-cross-origin"
 
+# Redirect rule for the primary old domain (shylockzv2.danmills.dev)
+# This rule will trigger if the host matches and redirect any path to the new domain.
+[[redirects]]
+  from = "/*"
+  to = "https://stocktool.danmills.dev/:splat"
+  status = 301
+  force = true
+  conditions = {Host = ["shylockzv2.danmills.dev"]}
+
+# Redirect rule for the second old domain (shylockz.danmills.dev)
+[[redirects]]
+  from = "/*"
+  to = "https://stocktool.danmills.dev/:splat"
+  status = 301
+  force = true
+  conditions = {Host = ["shylockz.danmills.dev"]}
