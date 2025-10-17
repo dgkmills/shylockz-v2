@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shylockz Dashboard</title>
-    <!-- === NEW: Favicon using his Degens logo === -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/dgkmills/shylockz-v2/main/icons/icon-192x192.png">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1a1a2e">
@@ -13,7 +12,6 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        /* === CSS Variables for Easy Theme Switching === */
         :root {
             --bg-color: #0f101a;
             --card-color: #1a1a2e;
@@ -62,14 +60,13 @@
 </head>
 <body class="p-4 sm:p-6">
     <div class="max-w-7xl mx-auto">
-        <!-- === UPDATED: Header with Market Status, Live Clock and Theme Toggle === -->
         <header class="mb-6">
             <div class="flex justify-between items-center">
                 <h1 class="text-2xl sm:text-3xl font-bold">Shylockz Dashboard</h1>
                 <div class="flex items-center space-x-4">
-                    <!-- === NEW: Market Status Indicator === -->
+                    <!-- === UPDATED: Market Status Indicator === -->
                     <div id="market-status-container" class="flex items-center space-x-2 text-right">
-                        <div id="market-status-icon" class="w-3 h-3 rounded-full flex-shrink-0"></div>
+                        <div id="market-status-icon" class="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center"></div>
                         <div>
                             <div id="market-status-text" class="text-sm sm:text-base font-semibold leading-tight">--</div>
                             <div id="market-status-timer" class="text-xs tabular-nums" style="color: var(--text-muted-color);">--:--:--</div>
@@ -84,9 +81,9 @@
             <div id="status-message" class="mt-2 text-xs" style="color: var(--text-muted-color);">
                 Fetching live data...
             </div>
-            <!-- === NEW: Note for closing prices === -->
+            <!-- === UPDATED: Dynamic Note for closing/after-hours prices === -->
             <div id="price-note" class="mt-1 text-xs italic" style="color: var(--text-muted-color); display: none;">
-                Prices shown are official closing prices as the market is currently closed.
+                <!-- Content injected by JS -->
             </div>
         </header>
 
@@ -96,7 +93,6 @@
     </div>
 
     <script>
-        // === Immediately apply theme from localStorage to prevent flash ===
         (function() {
             if (localStorage.getItem('theme') === 'light') {
                 document.documentElement.classList.add('light');
@@ -114,7 +110,6 @@
             const liveClock = document.getElementById('live-clock');
             const themeToggle = document.getElementById('theme-toggle');
             
-            // === NEW: Market Status DOM Elements ===
             const marketStatusIcon = document.getElementById('market-status-icon');
             const marketStatusText = document.getElementById('market-status-text');
             const marketStatusTimer = document.getElementById('market-status-timer');
@@ -123,7 +118,12 @@
             const uiElements = {};
 
             const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
-            const moonIcon = `<svg xmlns="http://www.w.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
+            const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
+            // === NEW: Icons for Market Status ===
+            const openIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-green-900" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd" /></svg>`;
+            const afterHoursIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-purple-900" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.706-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 14.95a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414l-.707.707zm-2.12-10.607a1 1 0 00-1.414 1.414l.707.707a1 1 0 101.414-1.414l-.707-.707zM4 11a1 1 0 11-2 0h1a1 1 0 110 2H3a1 1 0 01-1-1z" /></svg>`;
+            const closedIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-red-900" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg>`;
+
 
             function createSkeletonCard(symbol) {
                 const card = document.createElement('div');
@@ -137,9 +137,13 @@
                         </div>
                         <a href="https://finance.yahoo.com/quote/${symbol}" target="_blank" rel="noopener noreferrer" class="text-xs text-white font-semibold py-1 px-2 rounded-md transition-colors" style="background-color: var(--link-bg-color);" onmouseover="this.style.backgroundColor='var(--link-bg-hover-color)';" onmouseout="this.style.backgroundColor='var(--link-bg-color)';">Compare</a>
                     </div>
-                    <div class="flex items-end space-x-2">
-                        <div class="price skeleton w-28 h-8"></div>
-                        <div class="change skeleton w-24 h-5 mb-1"></div>
+                    <div>
+                        <div class="flex items-end space-x-2">
+                            <div class="price skeleton w-28 h-8"></div>
+                            <div class="change skeleton w-24 h-5 mb-1"></div>
+                        </div>
+                        <!-- === NEW: At Close Timestamp === -->
+                        <div class="at-close-info text-xs mt-1" style="color: var(--text-muted-color); display: none;">At close: 4:00 PM ET</div>
                     </div>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs pt-2 border-t" style="border-color: var(--border-color);">
                         <span style="color: var(--text-muted-color);">Open</span><span class="data-open skeleton w-16 h-4 justify-self-end"></span>
@@ -153,6 +157,7 @@
                     price: card.querySelector('.price'),
                     change: card.querySelector('.change'),
                     lastUpdated: card.querySelector('.last-updated'),
+                    atCloseInfo: card.querySelector('.at-close-info'), // New reference
                     open: card.querySelector('.data-open'),
                     high: card.querySelector('.data-high'),
                     low: card.querySelector('.data-low'),
@@ -167,7 +172,6 @@
             setInterval(updateClock, 1000);
             updateClock();
 
-            // === NEW: Market Status and Countdown Logic ===
             function formatTimeDiff(ms) {
                 if (ms < 0) ms = 0;
                 const totalSeconds = Math.floor(ms / 1000);
@@ -177,62 +181,75 @@
                 return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             }
 
+            // === UPDATED: Market Status Logic for After-Hours ===
             function updateMarketStatus() {
                 const now = new Date();
                 const nyTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-                const day = nyTime.getDay(); // 0=Sunday, 6=Saturday
+                const day = nyTime.getDay();
                 const hour = nyTime.getHours();
                 const minute = nyTime.getMinutes();
-                
+                const timeInMinutes = hour * 60 + minute;
                 const isWeekend = (day === 0 || day === 6);
-                // Note: This does not account for market holidays.
-                
-                const marketOpen = new Date(nyTime);
-                marketOpen.setHours(9, 30, 0, 0);
 
-                const marketClose = new Date(nyTime);
-                marketClose.setHours(16, 0, 0, 0);
-                
-                let status = "Closed";
-                let timerLabel = "Opens in";
-                let diff = 0;
+                const marketOpen = new Date(nyTime); marketOpen.setHours(9, 30, 0, 0);
+                const marketClose = new Date(nyTime); marketClose.setHours(16, 0, 0, 0);
+                const afterHoursEnd = new Date(nyTime); afterHoursEnd.setHours(20, 0, 0, 0);
+
+                let status, timerLabel, diff, bgColor, icon, noteText;
+                let showAtClose = true;
 
                 if (isWeekend) {
+                    status = "Closed";
+                    timerLabel = "Opens in";
                     let nextOpen = new Date(marketOpen);
-                    if (day === 6) { // Saturday
-                        nextOpen.setDate(nextOpen.getDate() + 2);
-                    } else { // Sunday
-                        nextOpen.setDate(nextOpen.getDate() + 1);
-                    }
+                    nextOpen.setDate(nextOpen.getDate() + (day === 6 ? 2 : 1));
                     diff = nextOpen - nyTime;
-                } else { // Weekday
-                    const timeInMinutes = hour * 60 + minute;
-                    if (timeInMinutes >= (9 * 60 + 30) && timeInMinutes < (16 * 60)) {
+                    bgColor = '#ef4444'; // red-500
+                    icon = closedIcon;
+                    noteText = "Prices shown are official closing prices from Friday.";
+                } else {
+                    if (timeInMinutes >= 570 && timeInMinutes < 960) { // 9:30 AM - 4:00 PM
                         status = "Open";
                         timerLabel = "Closes in";
                         diff = marketClose - nyTime;
-                    } else if (timeInMinutes < (9 * 60 + 30)) { // Pre-market
+                        bgColor = '#22c55e'; // green-500
+                        icon = openIcon;
+                        noteText = "";
+                        showAtClose = false;
+                    } else if (timeInMinutes >= 960 && timeInMinutes < 1200) { // 4:00 PM - 8:00 PM
+                        status = "After-Hours";
+                        timerLabel = "Ends in";
+                        diff = afterHoursEnd - nyTime;
+                        bgColor = '#a855f7'; // purple-500
+                        icon = afterHoursIcon;
+                        noteText = "Prices shown are official closing prices. After-hours trading is not reflected.";
+                    } else { // Pre-market or Overnight
                         status = "Closed";
                         timerLabel = "Opens in";
-                        diff = marketOpen - nyTime;
-                    } else { // Post-market
-                        status = "Closed";
-                        timerLabel = "Opens in";
-                        let nextOpen = new Date(marketOpen);
-                        nextOpen.setDate(nextOpen.getDate() + (day === 5 ? 3 : 1)); // If Friday, add 3 days
-                        diff = nextOpen - nyTime;
+                        if (timeInMinutes >= 1200) { // After 8 PM
+                            let nextOpen = new Date(marketOpen);
+                            nextOpen.setDate(nextOpen.getDate() + (day === 5 ? 3 : 1));
+                            diff = nextOpen - nyTime;
+                        } else { // Before 9:30 AM
+                            diff = marketOpen - nyTime;
+                        }
+                        bgColor = '#ef4444';
+                        icon = closedIcon;
+                        noteText = "Prices shown are official closing prices from the previous trading day.";
                     }
                 }
                 
                 marketStatusText.textContent = `Market ${status}`;
                 marketStatusTimer.textContent = `${timerLabel} ${formatTimeDiff(diff)}`;
+                marketStatusIcon.style.backgroundColor = bgColor;
+                marketStatusIcon.innerHTML = icon;
+
+                priceNote.textContent = noteText;
+                priceNote.style.display = noteText ? 'block' : 'none';
                 
-                if (status === "Open") {
-                    marketStatusIcon.style.backgroundColor = '#22c55e'; // green-500
-                    priceNote.style.display = 'none';
-                } else {
-                    marketStatusIcon.style.backgroundColor = '#ef4444'; // red-500
-                    priceNote.style.display = 'block';
+                // Toggle visibility of "At close" timestamp on all cards
+                for (const symbol in uiElements) {
+                    uiElements[symbol].atCloseInfo.style.display = showAtClose ? 'block' : 'none';
                 }
             }
             
@@ -273,7 +290,6 @@
                             return;
                         }
 
-                        // --- Main Price Info ---
                         ui.price.textContent = `$${data.price.toFixed(2)}`;
                         ui.change.textContent = `${data.changeAmount >= 0 ? '+' : ''}${data.changeAmount.toFixed(2)} (${data.changePercent.toFixed(2)}%)`;
                         ui.lastUpdated.textContent = lastUpdatedTime;
@@ -282,7 +298,6 @@
                         ui.price.className = 'price text-2xl font-semibold tabular-nums';
                         ui.change.className = `change text-sm font-medium tabular-nums ${data.changeAmount >= 0 ? 'text-green-500' : 'text-red-500'}`;
                         
-                        // --- Additional Data Points ---
                         ui.open.textContent = `$${data.open.toFixed(2)}`;
                         ui.high.textContent = `$${data.high.toFixed(2)}`;
                         ui.low.textContent = `$${data.low.toFixed(2)}`;
@@ -304,3 +319,4 @@
     </script>
 </body>
 </html>
+
