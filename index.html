@@ -13,7 +13,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        /* === NEW: CSS Variables for Easy Theme Switching === */
+        /* === CSS Variables for Easy Theme Switching === */
         :root {
             --bg-color: #0f101a;
             --card-color: #1a1a2e;
@@ -62,11 +62,19 @@
 </head>
 <body class="p-4 sm:p-6">
     <div class="max-w-7xl mx-auto">
-        <!-- === NEW: Header with Live Clock and Theme Toggle === -->
+        <!-- === UPDATED: Header with Market Status, Live Clock and Theme Toggle === -->
         <header class="mb-6">
             <div class="flex justify-between items-center">
                 <h1 class="text-2xl sm:text-3xl font-bold">Shylockz Dashboard</h1>
                 <div class="flex items-center space-x-4">
+                    <!-- === NEW: Market Status Indicator === -->
+                    <div id="market-status-container" class="flex items-center space-x-2 text-right">
+                        <div id="market-status-icon" class="w-3 h-3 rounded-full flex-shrink-0"></div>
+                        <div>
+                            <div id="market-status-text" class="text-sm sm:text-base font-semibold leading-tight">--</div>
+                            <div id="market-status-timer" class="text-xs tabular-nums" style="color: var(--text-muted-color);">--:--:--</div>
+                        </div>
+                    </div>
                     <div id="live-clock" class="text-sm sm:text-base font-semibold tabular-nums text-right"></div>
                     <button id="theme-toggle" class="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg-color)] focus:ring-indigo-500">
                         <!-- Icons will be injected by JS -->
@@ -76,6 +84,10 @@
             <div id="status-message" class="mt-2 text-xs" style="color: var(--text-muted-color);">
                 Fetching live data...
             </div>
+            <!-- === NEW: Note for closing prices === -->
+            <div id="price-note" class="mt-1 text-xs italic" style="color: var(--text-muted-color); display: none;">
+                Prices shown are official closing prices as the market is currently closed.
+            </div>
         </header>
 
         <div id="stock-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -84,11 +96,13 @@
     </div>
 
     <script>
-        // === NEW: Immediately apply theme from localStorage to prevent flash ===
+        // === Immediately apply theme from localStorage to prevent flash ===
         (function() {
             if (localStorage.getItem('theme') === 'light') {
                 document.documentElement.classList.add('light');
+                document.documentElement.classList.remove('dark');
             } else {
+                document.documentElement.classList.add('dark');
                 document.documentElement.classList.remove('light');
             }
         })();
@@ -99,12 +113,18 @@
             const statusMessage = document.getElementById('status-message');
             const liveClock = document.getElementById('live-clock');
             const themeToggle = document.getElementById('theme-toggle');
+            
+            // === NEW: Market Status DOM Elements ===
+            const marketStatusIcon = document.getElementById('market-status-icon');
+            const marketStatusText = document.getElementById('market-status-text');
+            const marketStatusTimer = document.getElementById('market-status-timer');
+            const priceNote = document.getElementById('price-note');
+
             const uiElements = {};
 
             const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
-            const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
+            const moonIcon = `<svg xmlns="http://www.w.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
 
-            // === NEW: Create Skeleton with more data points ===
             function createSkeletonCard(symbol) {
                 const card = document.createElement('div');
                 card.id = `stock-${symbol}`;
@@ -141,19 +161,91 @@
             }
             symbols.forEach(createSkeletonCard);
 
-            // === NEW: Live Clock Functionality ===
             function updateClock() {
                 liveClock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             }
             setInterval(updateClock, 1000);
             updateClock();
 
-            // === NEW: Theme Toggle Functionality ===
+            // === NEW: Market Status and Countdown Logic ===
+            function formatTimeDiff(ms) {
+                if (ms < 0) ms = 0;
+                const totalSeconds = Math.floor(ms / 1000);
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+
+            function updateMarketStatus() {
+                const now = new Date();
+                const nyTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+                const day = nyTime.getDay(); // 0=Sunday, 6=Saturday
+                const hour = nyTime.getHours();
+                const minute = nyTime.getMinutes();
+                
+                const isWeekend = (day === 0 || day === 6);
+                // Note: This does not account for market holidays.
+                
+                const marketOpen = new Date(nyTime);
+                marketOpen.setHours(9, 30, 0, 0);
+
+                const marketClose = new Date(nyTime);
+                marketClose.setHours(16, 0, 0, 0);
+                
+                let status = "Closed";
+                let timerLabel = "Opens in";
+                let diff = 0;
+
+                if (isWeekend) {
+                    let nextOpen = new Date(marketOpen);
+                    if (day === 6) { // Saturday
+                        nextOpen.setDate(nextOpen.getDate() + 2);
+                    } else { // Sunday
+                        nextOpen.setDate(nextOpen.getDate() + 1);
+                    }
+                    diff = nextOpen - nyTime;
+                } else { // Weekday
+                    const timeInMinutes = hour * 60 + minute;
+                    if (timeInMinutes >= (9 * 60 + 30) && timeInMinutes < (16 * 60)) {
+                        status = "Open";
+                        timerLabel = "Closes in";
+                        diff = marketClose - nyTime;
+                    } else if (timeInMinutes < (9 * 60 + 30)) { // Pre-market
+                        status = "Closed";
+                        timerLabel = "Opens in";
+                        diff = marketOpen - nyTime;
+                    } else { // Post-market
+                        status = "Closed";
+                        timerLabel = "Opens in";
+                        let nextOpen = new Date(marketOpen);
+                        nextOpen.setDate(nextOpen.getDate() + (day === 5 ? 3 : 1)); // If Friday, add 3 days
+                        diff = nextOpen - nyTime;
+                    }
+                }
+                
+                marketStatusText.textContent = `Market ${status}`;
+                marketStatusTimer.textContent = `${timerLabel} ${formatTimeDiff(diff)}`;
+                
+                if (status === "Open") {
+                    marketStatusIcon.style.backgroundColor = '#22c55e'; // green-500
+                    priceNote.style.display = 'none';
+                } else {
+                    marketStatusIcon.style.backgroundColor = '#ef4444'; // red-500
+                    priceNote.style.display = 'block';
+                }
+            }
+            
+            setInterval(updateMarketStatus, 1000);
+            updateMarketStatus();
+
             function setupThemeToggle() {
                 const isLight = document.documentElement.classList.contains('light');
                 themeToggle.innerHTML = isLight ? moonIcon : sunIcon;
                 themeToggle.addEventListener('click', () => {
-                    const isCurrentlyLight = document.documentElement.classList.toggle('light');
+                    document.documentElement.classList.toggle('light');
+                    document.documentElement.classList.toggle('dark');
+                    const isCurrentlyLight = document.documentElement.classList.contains('light');
                     localStorage.setItem('theme', isCurrentlyLight ? 'light' : 'dark');
                     themeToggle.innerHTML = isCurrentlyLight ? moonIcon : sunIcon;
                 });
@@ -167,16 +259,17 @@
                     const stockData = await response.json();
                     if (stockData.error) throw new Error(stockData.error);
                     
-                    // === NEW: Update time with seconds ===
                     const lastUpdatedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                     statusMessage.textContent = `Data from Finnhub API. Last updated: ${lastUpdatedTime}`;
 
                     stockData.forEach(data => {
                         const ui = uiElements[data.symbol];
                         if (!ui || data.error || typeof data.price !== 'number') {
-                            ui.price.textContent = data.error || 'Data unavailable';
-                            ui.price.classList.remove('skeleton', 'w-28', 'h-8');
-                            ui.price.className = 'text-sm text-red-400 font-semibold';
+                            if (ui) {
+                                ui.price.textContent = data.error || 'Data unavailable';
+                                ui.price.classList.remove('skeleton', 'w-28', 'h-8');
+                                ui.price.className = 'text-sm text-red-400 font-semibold';
+                            }
                             return;
                         }
 
@@ -189,7 +282,7 @@
                         ui.price.className = 'price text-2xl font-semibold tabular-nums';
                         ui.change.className = `change text-sm font-medium tabular-nums ${data.changeAmount >= 0 ? 'text-green-500' : 'text-red-500'}`;
                         
-                        // --- NEW: Additional Data Points ---
+                        // --- Additional Data Points ---
                         ui.open.textContent = `$${data.open.toFixed(2)}`;
                         ui.high.textContent = `$${data.high.toFixed(2)}`;
                         ui.low.textContent = `$${data.low.toFixed(2)}`;
@@ -211,4 +304,3 @@
     </script>
 </body>
 </html>
-
